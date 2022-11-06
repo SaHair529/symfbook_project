@@ -4,3 +4,4 @@ twig:
 when@test:
     twig:
         strict_variables: true
+        form_variables: ['bootstrap_5_layout.html.twig']
