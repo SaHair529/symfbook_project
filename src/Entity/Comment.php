@@ -60,6 +60,11 @@ class Comment
         return $this->id;
     }
 
+    public function getState(): ?string
+    {
+        return $this->state;
+    }
+
     public function getAuthor(): ?string
     {
         return $this->author;
