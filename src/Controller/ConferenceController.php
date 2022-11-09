@@ -14,8 +14,11 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Notifier\Notification\Notification;
+use Symfony\Component\Notifier\NotifierInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
 
 class ConferenceController extends AbstractController
@@ -46,7 +49,10 @@ class ConferenceController extends AbstractController
 
     #[Route('/conference/{slug}', name: 'conference')]
     public function show(
-        Request $request, Conference $conference, CommentRepository $commentRepository,
+        Request $request,
+        Conference $conference,
+        CommentRepository $commentRepository,
+        NotifierInterface $notifier,
         string $photoDir
     ): Response
     {
@@ -75,9 +81,22 @@ class ConferenceController extends AbstractController
                 'permalink' => $request->getUri(),
             ];
 
-            $this->bus->dispatch(new CommentMessage($comment->getId(), $context));
+            $reviewUrl = $this->generateUrl(
+                'review_comment',
+                ['id' => $comment->getId()],
+                UrlGeneratorInterface::ABSOLUTE_URL
+            );
+            $this->bus->dispatch(new CommentMessage($comment->getId(), $reviewUrl, $context));
+
+            $notificationMessage = 'Thank you for the feedback; your comment will be posted after moderation';
+            $notifier->send(new Notification($notificationMessage, ['browser']));
 
             return $this->redirectToRoute('conference', ['slug' => $conference->getSlug()]);
+        }
+
+        if ($form->isSubmitted()) {
+            $notificationMessage = 'Can you check your submission? There are problems with it';
+            $notifier->send(new Notification($notificationMessage, ['browser']));
         }
 
         $offset = max(0, $request->query->getInt('offset'));
